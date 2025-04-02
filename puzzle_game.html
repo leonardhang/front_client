@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>puzzle game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .pices_numner {
+            width: 30px;
+            height: 30px;
+            font-size: 20px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+
+        .btn_number {
+            width: 50px;
+            height: 30px;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .uploader {
+            margin-bottom: 20px;
+        }
+
+        .puzzle-container {
+            display: grid;
+            gap: 5px;
+        }
+
+        .puzzle-piece {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ccc;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: grab;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <h1>puzzle game</h1>
+        <div class="picesNumber">
+            <input type="number" id="Horizontal" value="" class="pices_numner" readonly /> *
+            <input type="number" id="Vertical" value="" class="pices_numner" readonly />
+            <button id="incress" class="btn_number" onclick="incress()">+</button>
+            <button id="decress" class="btn_number" onclick="decress()">-</button>
+        </div>
+        <div class="uploader">
+            <input type="file" id="fileInput" accept="image/*" />
+        </div>
+        <div class="puzzle-container"></div>
+    </div>
+
+</body>
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const puzzleContainer = document.getElementsByClassName('puzzle-container');
+    let imageSrc = '';
+    let splitNumber = 3;
+    document.getElementById('Horizontal').value = splitNumber;
+    document.getElementById('Vertical').value = splitNumber;
+    generatePieces(splitNumber);
+    let piecesLength = splitNumber * splitNumber;
+    let pieces = [];
+
+    fileInput.addEventListener('change', (event) => {
+        pieces = document.querySelectorAll('.puzzle-piece');
+        bindDragEvents();
+        const file = event.target.files[0];
+        if (file) {
+            let numbers = Array.from({ length: piecesLength }, (_, i) => i);
+            for (let i = numbers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+            }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                imageSrc = e.target.result;
+                pieces.forEach((piece, index) => {
+                    let randomIndex = numbers[index];
+                    piece.style.backgroundImage = `url(${imageSrc})`;
+                    piece.style.backgroundPosition = `${-randomIndex % splitNumber * 100}px ${-Math.floor(randomIndex / splitNumber) * 100}px`;
+                    piece.style.backgroundSize = `${100 * splitNumber}px ${100 * splitNumber}px`;
+                    piece.id = `piece-${randomIndex}`;
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function bindDragEvents() {
+        pieces.forEach(piece => {
+            piece.addEventListener('dragstart', () => {
+                piece.classList.add('dragging');
+                console.log(`piece${piece.id} dragging`);
+            });
+            piece.addEventListener('dragend', () => {
+                piece.classList.remove('dragging');
+                console.log(`piece${piece.id} dragend`);
+                isWin();
+            });
+            piece.addEventListener('dragover', (event) => {
+                event.preventDefault();
+            });
+            piece.addEventListener('drop', (event) => {
+                console.log(`piece${piece.id} drop`);
+                const draggedPiece = document.querySelector('.dragging');
+                let arrayNodes = Array.from(puzzleContainer[0].children);
+                if (draggedPiece && draggedPiece !== piece) {
+                    const draggedIndex = arrayNodes.findIndex(e => e.id == draggedPiece.id);
+                    const targetIndex = arrayNodes.findIndex(e => e.id == piece.id);
+                    //puzzleContainer[0].insertBefore(arrayNodes[draggedIndex], arrayNodes[targetIndex]);
+                    if (targetIndex < draggedIndex) {
+                        puzzleContainer[0].insertBefore(arrayNodes[draggedIndex], arrayNodes[targetIndex]);
+                    } else {
+                        puzzleContainer[0].insertBefore(arrayNodes[targetIndex], arrayNodes[draggedIndex]);
+                    }
+                }
+                
+            });
+        });
+    }
+
+    function incress() {
+        if (splitNumber >= 5) {
+            alert("图片分割最多为5 * 5");
+            return;
+        }
+        splitNumber++;
+        piecesLength = splitNumber * splitNumber;
+        document.getElementById('Horizontal').value = splitNumber;
+        document.getElementById('Vertical').value = splitNumber;
+        puzzleContainer[0].innerHTML = '';
+        generatePieces(splitNumber);
+    }
+    function decress() {
+        if (splitNumber <= 3) {
+            alert("图片分割最少为3 * 3");
+            return;
+        }
+        splitNumber++;
+        piecesLength = splitNumber * splitNumber;
+        document.getElementById('Horizontal').value = splitNumber;
+        document.getElementById('Vertical').value = splitNumber;
+        puzzleContainer[0].innerHTML = '';
+        generatePieces(splitNumber);
+    }
+
+    function generatePieces(splitNumber) {
+        for (let i = 0; i < splitNumber * splitNumber; i++) {
+            let newPiece = document.createElement('div');
+            newPiece.className = 'puzzle-piece';
+            newPiece.draggable = true;
+            puzzleContainer[0].appendChild(newPiece);
+        }
+        puzzleContainer[0].style = `display: grid; gap: 5px; grid-template-columns: repeat(${splitNumber}, 100px); grid-template-rows: repeat(${splitNumber}, 100px);`;
+    }
+
+    function isWin() {
+        let pieces = Array.from(puzzleContainer[0].children);
+        let isWin = true;
+        pieces.forEach((piece, index) => {
+            let pieceNumber = parseInt(piece.id.split('-')[1]);
+            if (pieceNumber !== index) {
+                isWin = false;
+            }
+        });
+        if (isWin) {
+            alert("You win!");
+        }
+    }
+
+</script>
+
+</html>
